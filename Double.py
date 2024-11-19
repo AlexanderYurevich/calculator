@@ -3,42 +3,48 @@ import re
 class Double:
     def __init__(self, value):
         if isinstance(value, str):
-            # Заменяем запятую на точку для унификации
+            # Замена запятой на точку и удаление пробелов для дальнейшей обработки
             value = value.replace(',', '.')
             
-            # Проверка, что строка содержит число с десятичной точкой
-            if re.match(r'^[+-]?\d+(\.\d*)?$', value):
-                # Находим позицию точки, если есть
-                point_index = value.find('.')
-                
-                # Определяем масштаб (количество знаков после точки)
-                self.scale = len(value) - point_index - 1 if point_index != -1 else 0
-                
-                # Убираем точку, если она есть, и сохраняем значение как целое число
-                self.value = int(value.replace('.', ''))
-            else:
-                raise ValueError("Invalid value for Double initialization")
+            # Проверка корректности ввода с использованием пробелов для разделения тысячных разрядов
+            # Формат: допускаются группы по 3 цифры, разделенные одним пробелом
+            if not re.match(r'^[+-]?(\d{1,3}( \d{3})*|\d+)(\.\d*)?$', value):
+                raise ValueError("Invalid format for Double initialization")
+            
+            # Определяем позицию точки, если есть, для определения масштаба
+            point_index = value.find('.')
+            self.scale = len(value) - point_index - 1 if point_index != -1 else 0
+            
+            # Убираем точку и пробелы, сохраняем значение как целое число
+            self.value = int(value.replace('.', '').replace(' ', ''))
         else:
             raise ValueError("Unsupported type for Double initialization")
 
+
     def __str__(self):
-        # Преобразуем значение обратно в строку с учетом масштаба
-        value_str = str(abs(self.value))  # Абсолютное значение для обработки строки
-        sign = '-' if self.value < 0 else ''  # Сохраняем знак числа
+        # Абсолютное значение для форматирования строки и знак числа
+        value_str = str(abs(self.value))
+        sign = '-' if self.value < 0 else ''
         
-        # Если масштаб равен нулю, возвращаем целое число
+        # Формирование целой и дробной части
         if self.scale == 0:
-            return sign + value_str
-        
-        # Вставляем точку перед нужной позицией, добавляем нули, если нужно
+            # Форматирование целой части с пробелами
+            integer_part = "{:,}".format(int(value_str)).replace(',', ' ')
+            return f"{sign}{integer_part}"
+
+        # Если длина строки меньше масштаба, добавляем нули слева
         if len(value_str) <= self.scale:
             value_str = '0' * (self.scale + 1 - len(value_str)) + value_str
+
+        integer_part = value_str[:-self.scale] if self.scale != len(value_str) else '0'
+        fractional_part = value_str[-self.scale:]
+
+        # Форматирование целой части с пробелами и удаление незначащих нулей справа
+        integer_part = "{:,}".format(int(integer_part)).replace(',', ' ')
+        fractional_part = fractional_part.rstrip('0')
         
-        # Формируем строку с десятичной точкой
-        formatted_value = value_str[:-self.scale] + '.' + value_str[-self.scale:]
-        
-        # Убираем незначащие нули справа и возвращаем результат с учетом знака
-        return sign + formatted_value.rstrip('0').rstrip('.') if '.' in formatted_value else sign + formatted_value
+        # Формируем окончательное представление с учетом знака
+        return f"{sign}{integer_part}.{fractional_part}" if fractional_part else f"{sign}{integer_part}"
 
     def _align_scales(self, other):
         """Вспомогательная функция для выравнивания масштаба перед арифметическими операциями."""
@@ -71,16 +77,22 @@ class Double:
             return Double.from_int(result_value, result_scale)
         raise ValueError("Multiplication is only supported between Double instances")
 
-    def __truediv__(self, other):
+    def __truediv__(self, other, precision=6):
         if isinstance(other, Double):
             if other.value == 0:
                 raise ZeroDivisionError("Division by zero")
             
-            # Для деления увеличиваем масштаб результата для лучшей точности
-            extended_scale = self.scale + other.scale + 10
+            # Увеличиваем масштаб результата для округления до нужной точности
+            extended_scale = self.scale + other.scale + precision + 1
             dividend = self.value * (10 ** extended_scale)
             result_value = dividend // other.value
-            return Double.from_int(result_value, extended_scale - other.scale)
+
+            # Округление по правилам математики
+            if (result_value % 10) >= 5:
+                result_value += 10
+            result_value //= 10
+                
+            return Double.from_int(result_value, extended_scale-1)
         raise ValueError("Division is only supported between Double instances")
 
     @classmethod
@@ -90,3 +102,4 @@ class Double:
         obj.value = value
         obj.scale = scale
         return obj
+
