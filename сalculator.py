@@ -1,91 +1,101 @@
 import tkinter as tk
+from tkinter import ttk
 from tkinter import messagebox
 from Double import Double
 
 class CalculatorApp:
-    def __init__(self, master):
-        self.master = master
-        master.title("Калькулятор")
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Калькулятор с четырьмя операндами")
 
-        # Устанавливаем конфигурацию для адаптации
-        master.grid_rowconfigure(0, weight=1)
-        for i in range(9):
-            master.grid_rowconfigure(i, weight=1)
-        master.grid_columnconfigure(0, weight=1)
+        # Инициализация переменных
+        self.operand1 = tk.StringVar(value="0")
+        self.operand2 = tk.StringVar(value="0")
+        self.operand3 = tk.StringVar(value="0")
+        self.operand4 = tk.StringVar(value="0")
+        self.operation1 = tk.StringVar(value="+")
+        self.operation2 = tk.StringVar(value="+")
+        self.operation3 = tk.StringVar(value="+")
+        self.result = tk.StringVar(value="Результат")
 
-        # Ввод первого числа
-        self.label1 = tk.Label(master, text="Введите первое число:")
-        self.label1.grid(row=0, column=0, sticky='ew', padx=10, pady=5)
-        
-        self.entry1 = tk.Entry(master)
-        self.entry1.grid(row=1, column=0, sticky='ew', padx=10, pady=5)
-        self.create_context_menu(self.entry1)  # Контекстное меню для первого поля ввода
+        self.rounding_method = tk.StringVar(value="математическое")
+        self.rounded_result = tk.StringVar(value="Округленный до целых результат")
 
-        # Ввод второго числа
-        self.label2 = tk.Label(master, text="Введите второе число:")
-        self.label2.grid(row=2, column=0, sticky='ew', padx=10, pady=5)
-        
-        self.entry2 = tk.Entry(master)
-        self.entry2.grid(row=3, column=0, sticky='ew', padx=10, pady=5)
-        self.create_context_menu(self.entry2)  # Контекстное меню для второго поля ввода
+        # Создание интерфейса
+        self.create_widgets()
 
-        # Радиокнопки для операций
-        self.operation_var = tk.StringVar(value="add")  # Сложение по умолчанию
+    def create_widgets(self):
+        frame = ttk.Frame(self.root, padding="10")
+        frame.grid(column=0, row=0, sticky="NSEW")
 
-        self.add_radio = tk.Radiobutton(master, text="Сложение", variable=self.operation_var, value="add")
-        self.add_radio.grid(row=4, column=0, sticky='ew', padx=10, pady=5)
+        # Поля ввода
+        ttk.Label(frame, text="Число 1").grid(column=0, row=0, sticky="W")
+        ttk.Entry(frame, textvariable=self.operand1).grid(column=1, row=0)
 
-        self.subtract_radio = tk.Radiobutton(master, text="Вычитание", variable=self.operation_var, value="subtract")
-        self.subtract_radio.grid(row=5, column=0, sticky='ew', padx=10, pady=5)
+        ttk.Combobox(frame, textvariable=self.operation1, values=["+", "-", "*", "/"]).grid(column=2, row=0)
 
-        self.multiply_radio = tk.Radiobutton(master, text="Умножение", variable=self.operation_var, value="multiply")
-        self.multiply_radio.grid(row=6, column=0, sticky='ew', padx=10, pady=5)
+        ttk.Label(frame, text="(").grid(column=3, row=0)
 
-        self.divide_radio = tk.Radiobutton(master, text="Деление", variable=self.operation_var, value="divide")
-        self.divide_radio.grid(row=7, column=0, sticky='ew', padx=10, pady=5)
+        ttk.Entry(frame, textvariable=self.operand2).grid(column=4, row=0)
+        ttk.Combobox(frame, textvariable=self.operation2, values=["+", "-", "*", "/"]).grid(column=5, row=0)
+        ttk.Entry(frame, textvariable=self.operand3).grid(column=6, row=0)
+
+        ttk.Label(frame, text=")").grid(column=7, row=0)
+
+        ttk.Combobox(frame, textvariable=self.operation3, values=["+", "-", "*", "/"]).grid(column=8, row=0)
+        ttk.Entry(frame, textvariable=self.operand4).grid(column=9, row=0)
 
         # Кнопка для вычисления
-        self.calculate_button = tk.Button(master, text="Вычислить", command=self.calculate)
-        self.calculate_button.grid(row=8, column=0, sticky='ew', padx=10, pady=5)
+        ttk.Button(frame, text="=", command=self.calculate).grid(column=10, row=0)
 
-        # Поле для результата
-        self.result_label = tk.Label(master, text="Результат:")
-        self.result_label.grid(row=9, column=0, sticky='ew', padx=10, pady=5)
+        # Отображение результата
+        ttk.Label(frame, textvariable=self.result, font=("Arial", 14)).grid(column=0, row=1, columnspan=11, sticky="W")
 
-        self.result = tk.Label(master, text="")
-        self.result.grid(row=10, column=0, sticky='ew', padx=10, pady=5)
+        # Выбор вида округления
+        ttk.Label(frame, text="Выбор вида округления:").grid(column=0, row=2, columnspan=4, sticky="W")
+        ttk.Radiobutton(frame, text="Математическое", variable=self.rounding_method, value="математическое").grid(column=0, row=3, columnspan=4, sticky="W")
+        ttk.Radiobutton(frame, text="Бухгалтерское", variable=self.rounding_method, value="бухгалтерское").grid(column=0, row=4, columnspan=4, sticky="W")
+        ttk.Radiobutton(frame, text="Усечение", variable=self.rounding_method, value="усечение").grid(column=0, row=5, columnspan=4, sticky="W")
 
-    def create_context_menu(self, entry):
-        """Создает контекстное меню для копирования, вырезания и вставки."""
-        menu = tk.Menu(entry, tearoff=0)
-        menu.add_command(label="Копировать", command=lambda: entry.event_generate("<<Copy>>"))
-        menu.add_command(label="Вырезать", command=lambda: entry.event_generate("<<Cut>>"))
-        menu.add_command(label="Вставить", command=lambda: entry.event_generate("<<Paste>>"))
-        
-        def show_context_menu(event):
-            menu.tk_popup(event.x_root, event.y_root)
-
-        entry.bind("<Button-3>", show_context_menu)  # ПКМ для вызова меню
+        # Отображение округленного результата
+        ttk.Label(frame, textvariable=self.rounded_result, font=("Arial", 14)).grid(column=0, row=6, columnspan=11, sticky="W")
+        ttk.Label(frame, text="Юревич А.Н., 3 курс, 11 группа, 2024").grid(column=0, row=7, sticky="W")
 
     def calculate(self):
         try:
-            num1 = Double(self.entry1.get())
-            num2 = Double(self.entry2.get())
-            operation = self.operation_var.get()
-            if operation == "add":
-                result = num1 + num2
-            elif operation == "subtract":
-                result = num1 - num2
-            elif operation == "multiply":
-                result = num1 * num2
-            elif operation == "divide":
-                result = num1 / num2
+            # Считываем операнды
+            op1 = Double(self.operand1.get())
+            op2 = Double(self.operand2.get())
+            op3 = Double(self.operand3.get())
+            op4 = Double(self.operand4.get())
 
-            self.result.config(text=str(result))
-        except ValueError as e:
-            messagebox.showerror("Ошибка", str(e))
-        except ZeroDivisionError:
-            messagebox.showerror("Ошибка", "Деление на ноль!")
+            # Выполняем приоритетную операцию
+            intermediate_result = self.perform_operation(op2, op3, self.operation2.get())
+
+            # Выполняем остальные операции
+            result = self.perform_operation(op1, intermediate_result, self.operation1.get())
+            result = self.perform_operation(result, op4, self.operation3.get())
+
+            # Округляем результат
+            self.result.set(f"Результат вычисления: {result}")
+            rounded = result.round_to_integer(self.rounding_method.get())
+            self.rounded_result.set(f"Округленный до целых: {rounded}")
+
+        except Exception as e:
+            self.result.set(f"Ошибка: {e}")
+
+    def perform_operation(self, operand1, operand2, operation):
+        if operation == "+":
+            return operand1 + operand2
+        elif operation == "-":
+            return operand1 - operand2
+        elif operation == "*":
+            return operand1 * operand2
+        elif operation == "/":
+            return operand1 / operand2
+        else:
+            raise ValueError(f"Неверная операция: {operation}")
+
 
 if __name__ == "__main__":
     root = tk.Tk()

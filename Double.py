@@ -77,7 +77,7 @@ class Double:
             return Double.from_int(result_value, result_scale)
         raise ValueError("Multiplication is only supported between Double instances")
 
-    def __truediv__(self, other, precision=6):
+    def __truediv__(self, other, precision=10):
         if isinstance(other, Double):
             if other.value == 0:
                 raise ZeroDivisionError("Division by zero")
@@ -92,8 +92,43 @@ class Double:
                 result_value += 10
             result_value //= 10
                 
-            return Double.from_int(result_value, extended_scale-1)
+            return Double.from_int(result_value, extended_scale-other.scale-1+self.scale)
         raise ValueError("Division is only supported between Double instances")
+    
+    def round_to_integer(self, method="математическое"):
+        """
+        Округляет число до целых с использованием указанного метода.
+        - 'математическое': стандартное математическое округление.
+        - 'бухгалтерское': округление к ближайшему четному.
+        - 'усечение': округление вниз (trunc).
+        """
+        integer_part = self.value // (10 ** self.scale)
+        if integer_part < 0:
+            integer_part += 1
+        fractional_part = abs(self.value) % (10 ** self.scale)
+
+        if method == "математическое":
+            # Математическое округление
+            if fractional_part >= 5 * (10 ** (self.scale - 1)):
+                return integer_part + (1 if self.value > 0 else -1)
+                
+            return integer_part
+
+       
+        elif method == "бухгалтерское":
+            # Бухгалтерское округление (к ближайшему чётному)
+            round_up = fractional_part > 5 * (10 ** (self.scale - 1)) or (
+                fractional_part == 5 * (10 ** (self.scale - 1)) and integer_part % 2 != 0
+            )
+            return integer_part + (1 if round_up and self.value > 0 else -1 if round_up and self.value < 0 else 0)
+
+
+        elif method == "усечение":
+            # Усечение (округление вниз)
+            return integer_part
+
+        else:
+            raise ValueError(f"Unsupported rounding method: {method}")
 
     @classmethod
     def from_int(cls, value, scale):
